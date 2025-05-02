@@ -34,6 +34,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="Email"
+        placeholderTextColor="#666"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -42,6 +43,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="Password"
+        placeholderTextColor="#666"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -73,6 +75,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 30,
     textAlign: 'center',
+    color: '#333',
   },
   input: {
     height: 50,
@@ -82,6 +85,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginBottom: 15,
     fontSize: 16,
+    backgroundColor: '#f9f9f9',
+    color: '#333',
   },
   button: {
     backgroundColor: '#FF4B6E',
