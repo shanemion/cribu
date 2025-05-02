@@ -88,10 +88,18 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const validateStep = (step: RegistrationStep): boolean => {
     switch (step) {
       case 'basic':
-        // if (!email || !password || !name || !internshipCity || !internshipCompany || !university || !gradYear) {
-        //   Alert.alert('Error', 'Please fill in all required fields');
-        //   return false;
-        // }
+        if (!email || !password || !name || !internshipCity || !internshipCompany || !university || !gradYear) {
+          Alert.alert('Error', 'Please fill in all required fields');
+          return false;
+        }
+        if (password.length < 6) {
+          Alert.alert('Error', 'Password must be at least 6 characters long');
+          return false;
+        }
+        if (!email.includes('@')) {
+          Alert.alert('Error', 'Please enter a valid email address');
+          return false;
+        }
         return true;
       case 'lifestyle':
         if (!bio) {
@@ -165,6 +173,25 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
           <Text style={styles.photoUploadText}>Add Profile Photo</Text>
         )}
       </TouchableOpacity>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Email (e.g., john.doe@university.edu)"
+        placeholderTextColor="#666"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Password (min. 6 characters)"
+        placeholderTextColor="#666"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
 
       <TextInput
         style={styles.input}
