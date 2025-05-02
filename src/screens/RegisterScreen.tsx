@@ -135,6 +135,13 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // Clean up socials object to remove undefined values
+      const socials = {
+        ...(instagram && { instagram }),
+        ...(linkedin && { linkedin }),
+        email: contactEmail,
+      };
+
       const userData = {
         name,
         email,
@@ -147,17 +154,18 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         lifestyleTags,
         professionalTags,
         bio,
-        socials: {
-          instagram: instagram || undefined,
-          linkedin: linkedin || undefined,
-          email: contactEmail,
-        },
+        socials,
         optedIntoIG,
-        igCaption: igCaption || undefined,
+        ...(igCaption && { igCaption }),
         lastActive: Timestamp.now(),
       };
 
-      await setDoc(doc(db, 'users', user.uid), userData);
+      // Remove any undefined values from the userData object
+      const cleanUserData = Object.fromEntries(
+        Object.entries(userData).filter(([_, value]) => value !== undefined)
+      );
+
+      await setDoc(doc(db, 'users', user.uid), cleanUserData);
       navigation.replace('Main');
     } catch (error: any) {
       Alert.alert('Error', error.message);

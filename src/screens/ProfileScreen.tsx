@@ -20,7 +20,6 @@ const ProfileScreen = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
-  const [age, setAge] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -33,11 +32,15 @@ const ProfileScreen = () => {
       if (!currentUser) return;
 
       const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      if (!userDoc.exists()) {
+        Alert.alert('Error', 'Profile not found');
+        return;
+      }
+
       const userData = userDoc.data() as User;
       setUser(userData);
-      setName(userData.name);
-      setBio(userData.bio);
-      setAge(userData.age.toString());
+      setName(userData.name || '');
+      setBio(userData.bio || '');
     } catch (error) {
       console.error('Error fetching profile:', error);
       Alert.alert('Error', 'Failed to load profile');
@@ -89,14 +92,12 @@ const ProfileScreen = () => {
       await updateDoc(doc(db, 'users', currentUser.uid), {
         name,
         bio,
-        age: parseInt(age),
       });
 
       setUser(prev => prev ? {
         ...prev,
         name,
         bio,
-        age: parseInt(age),
       } : null);
 
       setIsEditing(false);
@@ -120,7 +121,7 @@ const ProfileScreen = () => {
       <View style={styles.header}>
         <TouchableOpacity onPress={handleImagePick} disabled={loading}>
           <Image
-            source={{ uri: user.photos[0] || 'https://via.placeholder.com/150' }}
+            source={{ uri: user.photos?.[0] || 'https://via.placeholder.com/150' }}
             style={styles.profileImage}
           />
           {loading && <View style={styles.loadingOverlay} />}
@@ -137,13 +138,6 @@ const ProfileScreen = () => {
               placeholder="Name"
             />
             <TextInput
-              style={styles.input}
-              value={age}
-              onChangeText={setAge}
-              placeholder="Age"
-              keyboardType="numeric"
-            />
-            <TextInput
               style={[styles.input, styles.bioInput]}
               value={bio}
               onChangeText={setBio}
@@ -157,8 +151,8 @@ const ProfileScreen = () => {
           </>
         ) : (
           <>
-            <Text style={styles.name}>{user.name}, {user.age}</Text>
-            <Text style={styles.bio}>{user.bio}</Text>
+            <Text style={styles.name}>{user.name}</Text>
+            <Text style={styles.bio}>{user.bio || 'No bio yet'}</Text>
             <TouchableOpacity
               style={styles.editButton}
               onPress={() => setIsEditing(true)}

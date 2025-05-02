@@ -40,8 +40,8 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({ navigation }) => {
       const querySnapshot = await getDocs(q);
       const matchesData: MatchWithUser[] = [];
 
-      for (const doc of querySnapshot.docs) {
-        const match = doc.data() as Match;
+      for (const matchDoc of querySnapshot.docs) {
+        const match = matchDoc.data() as Match;
         const otherUserId = match.users.find(id => id !== currentUser.uid);
         
         if (otherUserId) {
@@ -50,6 +50,7 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({ navigation }) => {
           
           matchesData.push({
             ...match,
+            id: matchDoc.id,
             matchedUser: userData,
           });
         }
@@ -66,15 +67,15 @@ const MatchesScreen: React.FC<MatchesScreenProps> = ({ navigation }) => {
       style={styles.matchCard}
       onPress={() => navigation.navigate('Chat', { 
         matchId: item.id,
-        name: item.matchedUser.name,
+        name: item.matchedUser?.name || 'Unknown User',
       })}
     >
       <Image
-        source={{ uri: item.matchedUser.photos[0] || 'https://via.placeholder.com/100' }}
+        source={{ uri: item.matchedUser?.photos?.[0] || 'https://via.placeholder.com/100' }}
         style={styles.avatar}
       />
       <View style={styles.matchInfo}>
-        <Text style={styles.name}>{item.matchedUser.name}</Text>
+        <Text style={styles.name}>{item.matchedUser?.name || 'Unknown User'}</Text>
         <Text style={styles.lastMessage}>
           {item.lastMessage?.text || 'Start a conversation!'}
         </Text>
