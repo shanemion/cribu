@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth, db, storage } from '../services/firebase';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import Slider from '@react-native-community/slider';
@@ -100,6 +101,10 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
           Alert.alert('Error', 'Please enter a valid email address');
           return false;
         }
+        if (!email.endsWith('@stanford.edu')) {
+          Alert.alert('Error', 'Please use a Stanford email address');
+          return false;
+        }
         return true;
       case 'lifestyle':
         if (!bio) {
@@ -135,6 +140,16 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // Upload profile photo if selected
+      let photoURL = null;
+      if (profilePhoto) {
+        const response = await fetch(profilePhoto);
+        const blob = await response.blob();
+        const photoRef = ref(storage, `profile-photos/${user.uid}`);
+        await uploadBytes(photoRef, blob);
+        photoURL = await getDownloadURL(photoRef);
+      }
+
       // Clean up socials object to remove undefined values
       const socials = {
         ...(instagram && { instagram }),
@@ -157,6 +172,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         socials,
         optedIntoIG,
         ...(igCaption && { igCaption }),
+        ...(photoURL && { photoURL }),
         lastActive: Timestamp.now(),
       };
 
@@ -535,4 +551,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default RegisterScreen; 
+export default RegisterScreen;

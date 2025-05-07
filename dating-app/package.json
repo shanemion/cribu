@@ -29,6 +29,7 @@
     "react-native-screens": "^4.10.0"
   },
   "devDependencies": {
+    "@react-native-community/cli": "latest",
     "@babel/core": "^7.25.2",
     "@types/firebase": "^3.2.3",
     "@types/react": "~18.3.12",
