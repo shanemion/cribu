@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "4c4ad8c3-fa6f-4689-8bd7-21d31679ea31"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.shanemion.datingapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
+    ],
+    "newArchEnabled": true
+  }
+}
