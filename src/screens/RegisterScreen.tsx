@@ -9,14 +9,16 @@ import {
   ScrollView,
   Image,
   Switch,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { auth, db, storage } from '../services/firebase';
+import { auth, db } from '../services/firebase';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as ImagePicker from 'expo-image-picker';
 import Slider from '@react-native-community/slider';
+import { AVATAR_ICONS, type AvatarIcon } from '../constants/avatars';
+import { SvgXml } from 'react-native-svg';
 
 type RegisterScreenProps = {
   navigation: NativeStackNavigationProp<any>;
@@ -36,7 +38,21 @@ const PROFESSIONAL_TAGS = [
   'Research', 'Consulting', 'Startup', 'Corporate'
 ];
 
+const CITIES = [
+  'San Francisco, CA',
+  'New York City, NY',
+  'Seattle, WA',
+  'Los Angeles, CA',
+  'Chicago, IL',
+  'Boston, MA',
+  'Austin, TX',
+  'Denver, CO',
+  'Washington, DC',
+  'San Jose, CA'
+];
+
 const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
+  const [showCityModal, setShowCityModal] = useState(false);
   const [currentStep, setCurrentStep] = useState<RegistrationStep>('basic');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,7 +63,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const [university, setUniversity] = useState('');
   const [gradYear, setGradYear] = useState('');
   const [lookingForRoommate, setLookingForRoommate] = useState(true);
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [selectedAvatar, setSelectedAvatar] = useState<AvatarIcon | null>(null);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [lifestyleTags, setLifestyleTags] = useState<string[]>([]);
   const [professionalTags, setProfessionalTags] = useState<string[]>([]);
   const [bio, setBio] = useState('');
@@ -57,17 +74,9 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const [optedIntoIG, setOptedIntoIG] = useState(false);
   const [igCaption, setIgCaption] = useState('');
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setProfilePhoto(result.assets[0].uri);
-    }
+  const selectAvatar = (avatar: AvatarIcon) => {
+    setSelectedAvatar(avatar);
+    setShowAvatarModal(false);
   };
 
   const toggleTag = (tag: string, type: 'lifestyle' | 'professional') => {
@@ -140,15 +149,11 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Upload profile photo if selected
-      let photoURL = null;
-      if (profilePhoto) {
-        const response = await fetch(profilePhoto);
-        const blob = await response.blob();
-        const photoRef = ref(storage, `profile-photos/${user.uid}`);
-        await uploadBytes(photoRef, blob);
-        photoURL = await getDownloadURL(photoRef);
-      }
+      // Set selected avatar
+      const avatarData = selectedAvatar ? {
+        avatarId: selectedAvatar.id,
+        avatarSvg: selectedAvatar.svgContent
+      } : null;
 
       // Clean up socials object to remove undefined values
       const socials = {
@@ -172,7 +177,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         socials,
         optedIntoIG,
         ...(igCaption && { igCaption }),
-        ...(photoURL && { photoURL }),
+        ...(avatarData && { avatar: avatarData }),
         lastActive: Timestamp.now(),
       };
 
@@ -190,13 +195,46 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
 
   const renderBasicInfo = () => (
     <View>
-      <TouchableOpacity style={styles.photoUpload} onPress={pickImage}>
-        {profilePhoto ? (
-          <Image source={{ uri: profilePhoto }} style={styles.profilePhoto} />
+      <TouchableOpacity style={styles.photoUpload} onPress={() => setShowAvatarModal(true)}>
+        {selectedAvatar ? (
+          <SvgXml xml={selectedAvatar.svgContent} width={120} height={120} />
         ) : (
-          <Text style={styles.photoUploadText}>Add Profile Photo</Text>
+          <Text style={styles.photoUploadText}>Select Avatar</Text>
         )}
       </TouchableOpacity>
+
+      <Modal
+        visible={showAvatarModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAvatarModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Your Avatar</Text>
+            <FlatList
+              data={AVATAR_ICONS}
+              numColumns={2}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.avatarItem, selectedAvatar?.id === item.id && styles.selectedAvatarItem]}
+                  onPress={() => selectAvatar(item)}
+                >
+                  <SvgXml xml={item.svgContent} width={80} height={80} />
+                  <Text style={styles.avatarName}>{item.name}</Text>
+                </TouchableOpacity>
+              )}
+              keyExtractor={item => item.id}
+            />
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowAvatarModal(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <TextInput
         style={styles.input}
@@ -225,13 +263,50 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         onChangeText={setName}
       />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Internship City (e.g., San Francisco, CA)"
-        placeholderTextColor="#666"
-        value={internshipCity}
-        onChangeText={setInternshipCity}
-      />
+      <TouchableOpacity
+        style={[styles.input, styles.cityPicker]}
+        onPress={() => setShowCityModal(true)}
+      >
+        <Text style={[styles.inputText, !internshipCity && styles.placeholder]}>
+          {internshipCity || 'Select Internship City'}
+        </Text>
+      </TouchableOpacity>
+
+      <Modal
+        visible={showCityModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCityModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Internship City</Text>
+            <FlatList
+              data={CITIES}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.cityItem}
+                  onPress={() => {
+                    setInternshipCity(item);
+                    setShowCityModal(false);
+                  }}
+                >
+                  <Text style={[styles.cityItemText, internshipCity === item && styles.selectedCityText]}>
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              keyExtractor={item => item}
+            />
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowCityModal(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <View style={styles.sliderContainer}>
         <Text style={styles.label}>Search Radius: {searchRadius} miles</Text>
@@ -270,7 +345,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         onChangeText={setGradYear}
         keyboardType="numeric"
       />
-
+{/* 
       <View style={styles.switchContainer}>
         <Text style={styles.label}>I'm looking for a roommate</Text>
         <Switch
@@ -278,7 +353,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
           onValueChange={setLookingForRoommate}
           trackColor={{ false: '#ddd', true: '#FF4B6E' }}
         />
-      </View>
+      </View> */}
     </View>
   );
 
@@ -422,6 +497,81 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 20,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+    color: '#333',
+  },
+  avatarItem: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 10,
+    margin: 5,
+    borderRadius: 10,
+    backgroundColor: '#f5f5f5',
+  },
+  selectedAvatarItem: {
+    backgroundColor: '#FFE5E5',
+    borderWidth: 2,
+    borderColor: '#FF4B6E',
+  },
+  avatarName: {
+    marginTop: 5,
+    fontSize: 14,
+    color: '#333',
+    textAlign: 'center',
+  },
+  cityItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  cityItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  selectedCityText: {
+    color: '#FF4B6E',
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    marginTop: 15,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: '#FF4B6E',
+    borderRadius: 8,
+  },
+  closeButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cityPicker: {
+    justifyContent: 'center',
+  },
+  inputText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  placeholder: {
+    color: '#666',
+  },
   container: {
     flex: 1,
     padding: 20,

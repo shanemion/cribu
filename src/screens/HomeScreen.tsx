@@ -8,7 +8,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import type { User } from '../types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -32,14 +32,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       const currentUser = auth.currentUser;
       if (!currentUser) return;
 
-      const userDoc = await getDocs(doc(db, 'users', currentUser.uid));
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
       const userData = userDoc.data() as User;
 
       const q = query(
         collection(db, 'users'),
-        where('gender', 'in', userData.lookingFor === 'both' 
-          ? ['male', 'female'] 
-          : [userData.lookingFor])
+        where('internshipCity', '==', userData.internshipCity),
+        where('lookingForRoommate', '==', true)
       );
 
       const querySnapshot = await getDocs(q);
@@ -47,9 +46,27 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       
       querySnapshot.forEach((doc) => {
         const user = doc.data() as User;
-        if (user.id !== currentUser.uid) {
-          matches.push(user);
+        if (user.id !== currentUser.uid && 
+            !userData.likes?.includes(user.id) && 
+            !userData.dislikes?.includes(user.id)) {
+          const hasMatchingLifestyle = user.lifestyleTags?.some(tag => 
+            userData.lifestyleTags?.includes(tag)
+          );
+          const hasMatchingProfessional = user.professionalTags?.some(tag => 
+            userData.professionalTags?.includes(tag)
+          );
+
+          if (hasMatchingLifestyle || hasMatchingProfessional) {
+            matches.push(user);
+          }
         }
+      });
+
+      // Sort matches by the number of matching tags
+      matches.sort((a, b) => {
+        const aMatchCount = countMatchingTags(a, userData);
+        const bMatchCount = countMatchingTags(b, userData);
+        return bMatchCount - aMatchCount;
       });
 
       setPotentialMatches(matches);
@@ -66,19 +83,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
       if (!currentUser || !likedUser) return;
 
-      // Add to likes collection
       await updateDoc(doc(db, 'users', currentUser.uid), {
         likes: [...(currentUser.likes || []), likedUser.id]
       });
 
-      // Check if it's a match
-      const likedUserDoc = await getDocs(doc(db, 'users', likedUser.id));
+      const likedUserDoc = await getDoc(doc(db, 'users', likedUser.id));
       const likedUserData = likedUserDoc.data();
       
       if (likedUserData?.likes?.includes(currentUser.uid)) {
-        // It's a match!
-        Alert.alert('It\'s a Match!', `You and ${likedUser.name} have liked each other!`);
-        // Create a new match document
+        Alert.alert('It\'s a Match!', `You and ${likedUser.name} are cribbed up!`);
         await setDoc(doc(db, 'matches', `${currentUser.uid}_${likedUser.id}`), {
           users: [currentUser.uid, likedUser.id],
           createdAt: new Date(),
@@ -92,8 +105,33 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleDislike = () => {
-    setCurrentIndex(prev => prev + 1);
+  const countMatchingTags = (user: User, currentUser: User): number => {
+    let count = 0;
+    user.lifestyleTags?.forEach(tag => {
+      if (currentUser.lifestyleTags?.includes(tag)) count++;
+    });
+    user.professionalTags?.forEach(tag => {
+      if (currentUser.professionalTags?.includes(tag)) count++;
+    });
+    return count;
+  };
+
+  const handleDislike = async () => {
+    try {
+      const currentUser = auth.currentUser;
+      const dislikedUser = potentialMatches[currentIndex];
+
+      if (!currentUser || !dislikedUser) return;
+
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        dislikes: [...(currentUser.dislikes || []), dislikedUser.id]
+      });
+
+      setCurrentIndex(prev => prev + 1);
+    } catch (error) {
+      console.error('Error handling dislike:', error);
+      Alert.alert('Error', 'Failed to process dislike');
+    }
   };
 
   const currentUser = potentialMatches[currentIndex];
@@ -101,7 +139,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   if (!currentUser) {
     return (
       <View style={styles.container}>
-        <Text style={styles.noMoreText}>No more potential matches</Text>
+        <Text style={styles.noMoreText}>No people found :(</Text>
       </View>
     );
   }
@@ -208,4 +246,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen; 
+export default HomeScreen;

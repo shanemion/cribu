@@ -4,14 +4,15 @@ export interface User {
   age: number;
   bio: string;
   photos: string[];
-  location: {
-    latitude: number;
-    longitude: number;
-  };
+  internshipCity: string;
   interests: string[];
   gender: 'male' | 'female' | 'other';
   lookingFor: 'male' | 'female' | 'both';
   lastActive: Date;
+  lifestyleTags: string[];
+  professionalTags: string[];
+  likes: string[];
+  dislikes: string[];
 }
 
 export interface Match {
