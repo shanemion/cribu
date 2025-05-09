@@ -48,7 +48,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         const user = doc.data() as User;
         if (user.id !== currentUser.uid && 
             !userData.likes?.includes(user.id) && 
-            !userData.dislikes?.includes(user.id)) {
+            !userData.dislikes?.includes(user.id) &&
+            user.email !== userData.email) {
           const hasMatchingLifestyle = user.lifestyleTags?.some(tag => 
             userData.lifestyleTags?.includes(tag)
           );
@@ -148,7 +149,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     <View style={styles.container}>
       <View style={styles.card}>
         <Image
-          source={{ uri: currentUser.photos[0] || 'https://via.placeholder.com/300' }}
+          // source={{ uri: currentUser.photos[0] || 'https://via.placeholder.com/300' }}
           style={styles.image}
         />
         <View style={styles.infoContainer}>
